@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chaos-app.fullname" . }}
+  labels:
+    {{- include "chaos-app.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "chaos-app.labels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+  type: ClusterIP

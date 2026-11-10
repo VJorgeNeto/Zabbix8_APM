@@ -1,0 +1,54 @@
+nameOverride: ""
+fullnameOverride: ""
+
+images:
+  # Refresh the mutable 8.0 tag on pod creation; this alone does not prove
+  # a particular bug was fixed. Verify the running version and storage.
+  pullPolicy: Always
+  server:
+    repository: zabbix/zabbix-server-pgsql
+    tag: alpine-8.0-latest
+  web:
+    repository: zabbix/zabbix-web-nginx-pgsql
+    tag: alpine-8.0-latest
+  agent2:
+    repository: zabbix/zabbix-agent2
+    tag: alpine-8.0-latest
+  mcp:
+    repository: zabbix/zabbix-mcp-server
+    tag: alpine-8.0-latest
+  postgres:
+    repository: postgres
+    tag: "16-alpine"
+
+postgres:
+  database: zabbix
+  username: zabbix
+  password: zabbix-lab-change-me
+  existingSecret: ""
+  storageClassName: local-path
+  storage: 5Gi
+
+server:
+  cacheSize: 128M
+  telemetry:
+    enabled: true
+    provider: '{"provider":"clickhouse","url":"http://zabbix-proxy-clickhouse:8123","db":"telemetry"}'
+    username: zabbix
+    password: zabbix-telemetry-change-me
+
+web:
+  timezone: America/Sao_Paulo
+  # Compatibility patch for standalone curl_close calls on PHP 8.5.
+  apmCurlCloseCompat: true
+
+agent2:
+  hostname: zabbix-agent-2
+
+mcp:
+  allowedIP: 0.0.0.0/0
+  debugLevel: "3"
+  service:
+    port: 8443
+
+resources: {}

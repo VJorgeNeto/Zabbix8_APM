@@ -1,0 +1,30 @@
+fullnameOverride: ""
+
+images:
+  # Refresh the mutable 8.0 tag; verify actual persisted telemetry separately.
+  pullPolicy: Always
+  proxy:
+    repository: zabbix/zabbix-proxy-sqlite3
+    tag: alpine-8.0-latest
+  clickhouse:
+    repository: clickhouse/clickhouse-server
+    # Legacy-CPU lab workaround, below the officially supported Zabbix minimum.
+    # Preflight CPU and correlated-query support with recover-clickhouse-image.sh.
+    tag: "25.8"
+
+clickhouse:
+  database: telemetry
+  username: zabbix
+  password: zabbix-telemetry-change-me
+  storageClassName: local-path
+  storage: 5Gi
+
+proxy:
+  hostname: zabbix-proxy
+  serverHost: zabbix-server
+  serverPort: "10051"
+  apmListenIP: 0.0.0.0
+  startAPMCollector: "1"
+  apmListenPort: "4317"
+  startTelemetryQueryPollers: "1"
+  debugLevel: "3"

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: dependency-api
+description: Controllable dependency used to demonstrate distributed tracing with Zabbix APM
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

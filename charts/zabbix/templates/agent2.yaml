@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zabbix.fullname" . }}-agent2
+  labels:
+    {{- include "zabbix.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/name: {{ include "zabbix.name" . }}-agent2
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: agent
+      port: 10050
+      targetPort: agent
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zabbix.fullname" . }}-agent2
+  labels:
+    {{- include "zabbix.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "zabbix.name" . }}-agent2
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "zabbix.name" . }}-agent2
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: zabbix-agent2
+          image: "{{ .Values.images.agent2.repository }}:{{ .Values.images.agent2.tag }}"
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          ports:
+            - name: agent
+              containerPort: 10050
+          env:
+            - name: ZBX_SERVER_HOST
+              value: {{ include "zabbix.fullname" . }}-server
+            - name: ZBX_HOSTNAME
+              value: {{ .Values.agent2.hostname | quote }}

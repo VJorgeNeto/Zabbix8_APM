@@ -1,0 +1,26 @@
+fullnameOverride: dependency-api
+
+image:
+  repository: dependency-api
+  tag: dev-v2
+  pullPolicy: Never
+
+replicaCount: 1
+
+service:
+  port: 80
+  targetPort: 8000
+
+otel:
+  serviceName: dependency-api
+  serviceVersion: "1.0.0"
+  exporterEndpoint: http://otel-collector:4317
+  tracesSampler: always_on
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi

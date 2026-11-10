@@ -1,0 +1,16 @@
+fullnameOverride: otel-collector
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: "0.162.0"
+  pullPolicy: IfNotPresent
+
+zabbixEndpoint: zabbix-proxy:4317
+# Enable only after verifying the proxy writes rows. Avoid duplicate writes
+# while the direct ClickHouse workaround is active.
+exportToProxy: false
+
+clickhouse:
+  endpoint: tcp://zabbix-proxy-clickhouse:9000
+  database: telemetry
+  existingSecret: zabbix-proxy-proxy

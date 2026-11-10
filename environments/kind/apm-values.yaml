@@ -1,0 +1,8 @@
+fullnameOverride: zabbix-proxy
+
+clickhouse:
+  storageClassName: local-path
+
+proxy:
+  hostname: zabbix-proxy
+  serverHost: zabbix-server

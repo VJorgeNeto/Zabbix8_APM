@@ -1,0 +1,11 @@
+fullnameOverride: chaos-app
+
+image:
+  repository: chaos-app
+  tag: dev-v2
+  pullPolicy: Never
+
+otel:
+  exporterEndpoint: http://otel-collector:4317
+
+dependencyApiUrl: http://dependency-api

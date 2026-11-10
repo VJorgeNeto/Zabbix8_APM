@@ -1,0 +1,9 @@
+# Kind-specific defaults. The local-path provisioner must be installed first.
+fullnameOverride: zabbix
+
+postgres:
+  storageClassName: local-path
+
+mcp:
+  # Development only. Restrict this when exposing MCP outside the local cluster.
+  allowedIP: 0.0.0.0/0

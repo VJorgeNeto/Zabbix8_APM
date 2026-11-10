@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dependency-api.fullname" . }}-config
+  labels:
+    {{- include "dependency-api.labels" . | nindent 4 }}
+data:
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.otel.exporterEndpoint | quote }}
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: {{ .Values.otel.exporterEndpoint | quote }}
+  OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: http://alloy:4317
+  OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+  OTEL_EXPORTER_OTLP_INSECURE: "true"
+  OTEL_EXPORTER_OTLP_TRACES_INSECURE: "true"
+  OTEL_BSP_SCHEDULE_DELAY_MILLIS: "500"
+  OTEL_SIMPLE_EXPORT: "true"
+  OTEL_DEBUG: "true"
+  OTEL_SERVICE_NAME: {{ .Values.otel.serviceName | quote }}
+  OTEL_SERVICE_VERSION: {{ .Values.otel.serviceVersion | quote }}
+  OTEL_DEPLOYMENT_ENVIRONMENT: kind
+  OTEL_TRACES_SAMPLER: {{ .Values.otel.tracesSampler | quote }}

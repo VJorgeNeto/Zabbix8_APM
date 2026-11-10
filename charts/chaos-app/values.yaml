@@ -1,0 +1,28 @@
+fullnameOverride: chaos-app
+
+image:
+  repository: chaos-app
+  tag: dev-v2
+  pullPolicy: Never
+
+replicaCount: 2
+
+service:
+  port: 80
+  targetPort: 8000
+
+otel:
+  serviceName: chaos-backend
+  serviceVersion: "1.0.0"
+  exporterEndpoint: http://otel-collector:4317
+  tracesSampler: always_on
+
+dependencyApiUrl: http://dependency-api
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

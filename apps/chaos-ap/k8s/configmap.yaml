@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chaos-app-config
+data:
+  # OTLP Endpoint (Substitua pelo IP do seu Gateway OTel ou Tempo no cluster)
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://tempo.observability.svc.cluster.local:4317"
+  REDIS_URL: "redis://redis-service.default.svc.cluster.local:6379/0"

@@ -1,0 +1,51 @@
+helmDefaults:
+  # The lab should not block the terminal while a component is being debugged.
+  # Use `helmfile sync --wait` explicitly when a blocking rollout is desired.
+  wait: false
+  timeout: 90
+  atomic: false
+  createNamespace: true
+
+releases:
+  - name: zabbix
+    namespace: zabbix
+    chart: ./charts/zabbix
+    values:
+      - ./environments/kind/values.yaml
+
+  - name: zabbix-apm
+    namespace: zabbix
+    chart: ./charts/zabbix-apm
+    needs:
+      - zabbix/zabbix
+    values:
+      - ./environments/kind/apm-values.yaml
+
+  - name: chaos-app
+    namespace: zabbix
+    chart: ./charts/chaos-app
+    needs:
+      - zabbix/zabbix-apm
+      - zabbix/dependency-api
+      - zabbix/otel-collector
+      - zabbix/alloy
+    values:
+      - ./environments/kind/chaos-app-values.yaml
+
+  - name: dependency-api
+    namespace: zabbix
+    chart: ./charts/dependency-api
+    needs:
+      - zabbix/zabbix-apm
+
+  - name: otel-collector
+    namespace: zabbix
+    chart: ./charts/otel-collector
+    needs:
+      - zabbix/zabbix-apm
+
+  - name: alloy
+    namespace: zabbix
+    chart: ./charts/alloy
+    needs:
+      - zabbix/zabbix-apm

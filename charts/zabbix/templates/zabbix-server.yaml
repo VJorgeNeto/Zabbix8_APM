@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zabbix.fullname" . }}-server
+  labels:
+    {{- include "zabbix.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/name: {{ include "zabbix.name" . }}-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: trapper
+      port: 10051
+      targetPort: trapper
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zabbix.fullname" . }}-server
+  labels:
+    {{- include "zabbix.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "zabbix.name" . }}-server
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "zabbix.name" . }}-server
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: "{{ .Values.images.postgres.repository }}:{{ .Values.images.postgres.tag }}"
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          command: ["sh", "-c", "until pg_isready -h {{ include "zabbix.fullname" . }}-postgres -U $POSTGRES_USER -d $POSTGRES_DB; do sleep 2; done"]
+          envFrom:
+            - secretRef:
+                name: {{ include "zabbix.secretName" . }}
+      containers:
+        - name: zabbix-server
+          image: "{{ .Values.images.server.repository }}:{{ .Values.images.server.tag }}"
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          ports:
+            - name: trapper
+              containerPort: 10051
+          env:
+            - name: DB_SERVER_HOST
+              value: {{ include "zabbix.fullname" . }}-postgres
+            - name: POSTGRES_USER
+              valueFrom: {secretKeyRef: {name: {{ include "zabbix.secretName" . }}, key: POSTGRES_USER}}
+            - name: POSTGRES_PASSWORD
+              valueFrom: {secretKeyRef: {name: {{ include "zabbix.secretName" . }}, key: POSTGRES_PASSWORD}}
+            - name: POSTGRES_DB
+              valueFrom: {secretKeyRef: {name: {{ include "zabbix.secretName" . }}, key: POSTGRES_DB}}
+            - name: ZBX_CACHESIZE
+              value: {{ .Values.server.cacheSize | quote }}
+            {{- if .Values.server.telemetry.enabled }}
+            - name: ZBX_STARTTELEMETRYQUERYPOLLERS
+              value: "1"
+            - name: ZBX_TELEMETRYPROVIDER_0
+              value: {{ .Values.server.telemetry.provider | quote }}
+            - name: ZBX_TELEMETRYPROVIDER_0_USERNAME
+              value: {{ .Values.server.telemetry.username | quote }}
+            - name: ZBX_TELEMETRYPROVIDER_0_PASSWORD
+              value: {{ .Values.server.telemetry.password | quote }}
+            {{- end }}
+          readinessProbe:
+            tcpSocket: {port: trapper}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: {port: trapper}
+            initialDelaySeconds: 60
+            periodSeconds: 20

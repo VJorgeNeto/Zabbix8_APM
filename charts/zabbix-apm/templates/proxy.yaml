@@ -1,0 +1,124 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "zabbix-apm.fullname" . }}-proxy
+  labels:
+    {{- include "zabbix-apm.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  CLICKHOUSE_USERNAME: {{ .Values.clickhouse.username | quote }}
+  CLICKHOUSE_PASSWORD: {{ .Values.clickhouse.password | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "zabbix-apm.fullname" . }}-apm-config
+  labels:
+    {{- include "zabbix-apm.labels" . | nindent 4 }}
+data:
+  zabbix_proxy_apm.conf: |
+    APMListenIP={{ .Values.proxy.apmListenIP }}
+    APMListenPort={{ .Values.proxy.apmListenPort }}
+  zabbix_proxy_forks.conf: |
+    StartAPMCollector={{ .Values.proxy.startAPMCollector }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zabbix-apm.fullname" . }}
+  labels:
+    {{- include "zabbix-apm.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/name: {{ include "zabbix-apm.name" . }}-proxy
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: zabbix
+      port: 10051
+      targetPort: zabbix
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zabbix-apm.fullname" . }}
+  labels:
+    {{- include "zabbix-apm.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  # A proxy uses a local SQLite database; avoid overlapping old/new pods
+  # during upgrades and make the rollout deterministic in the lab.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "zabbix-apm.name" . }}-proxy
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "zabbix-apm.name" . }}-proxy
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/apm-config: {{ printf "StartAPMCollector=%s\nAPMListenIP=%s\nAPMListenPort=%s\n" .Values.proxy.startAPMCollector .Values.proxy.apmListenIP .Values.proxy.apmListenPort | sha256sum | quote }}
+    spec:
+      containers:
+        - name: zabbix-proxy
+          image: "{{ .Values.images.proxy.repository }}:{{ .Values.images.proxy.tag }}"
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          ports:
+            - name: zabbix
+              containerPort: 10051
+            - name: otlp-grpc
+              containerPort: 4317
+          env:
+            - name: ZBX_HOSTNAME
+              value: {{ .Values.proxy.hostname | quote }}
+            - name: ZBX_SERVER_HOST
+              value: {{ .Values.proxy.serverHost | quote }}
+            - name: ZBX_SERVER_PORT
+              value: {{ .Values.proxy.serverPort | quote }}
+            - name: ZBX_PROXYMODE
+              value: "0"
+            - name: ZBX_STARTAPMCOLLECTOR
+              value: {{ .Values.proxy.startAPMCollector | quote }}
+            - name: ZBX_APMLISTENIP
+              value: {{ .Values.proxy.apmListenIP | quote }}
+            - name: ZBX_APMLISTENPORT
+              value: {{ .Values.proxy.apmListenPort | quote }}
+            - name: ZBX_STARTTELEMETRYQUERYPOLLERS
+              value: {{ .Values.proxy.startTelemetryQueryPollers | quote }}
+            - name: ZBX_DEBUGLEVEL
+              value: {{ .Values.proxy.debugLevel | quote }}
+            - name: ZBX_TELEMETRYPROVIDER_0
+              value: '{"provider":"clickhouse","url":"http://{{ include "zabbix-apm.fullname" . }}-clickhouse:8123","db":"{{ .Values.clickhouse.database }}"}'
+            - name: ZBX_TELEMETRYPROVIDER_0_USERNAME
+              valueFrom: {secretKeyRef: {name: {{ include "zabbix-apm.fullname" . }}-proxy, key: CLICKHOUSE_USERNAME}}
+            - name: ZBX_TELEMETRYPROVIDER_0_PASSWORD
+              valueFrom: {secretKeyRef: {name: {{ include "zabbix-apm.fullname" . }}-proxy, key: CLICKHOUSE_PASSWORD}}
+            - name: ZBX_TELEMETRYPROVIDER_0_SCHEMA
+              value: '{"create":true}'
+          volumeMounts:
+            - name: proxy-data
+              mountPath: /var/lib/zabbix/db_data
+            - name: apm-config
+              mountPath: /etc/zabbix/zabbix_proxy_apm.conf
+              subPath: zabbix_proxy_apm.conf
+            - name: apm-forks-config
+              mountPath: /etc/zabbix/zabbix_proxy_forks.conf
+              subPath: zabbix_proxy_forks.conf
+          readinessProbe:
+            tcpSocket: {port: otlp-grpc}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+      volumes:
+        - name: proxy-data
+          emptyDir: {}
+        - name: apm-config
+          configMap:
+            name: {{ include "zabbix-apm.fullname" . }}-apm-config
+        - name: apm-forks-config
+          configMap:
+            name: {{ include "zabbix-apm.fullname" . }}-apm-config

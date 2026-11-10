@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zabbix.fullname" . }}-mcp
+  labels:
+    {{- include "zabbix.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/name: {{ include "zabbix.name" . }}-mcp
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: mcp
+      port: {{ .Values.mcp.service.port }}
+      targetPort: mcp
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zabbix.fullname" . }}-mcp
+  labels:
+    {{- include "zabbix.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "zabbix.name" . }}-mcp
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "zabbix.name" . }}-mcp
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: zabbix-mcp
+          image: "{{ .Values.images.mcp.repository }}:{{ .Values.images.mcp.tag }}"
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          ports:
+            - name: mcp
+              containerPort: 8443
+          env:
+            - name: ZBX_FRONTEND_URL
+              value: http://{{ include "zabbix.fullname" . }}-web:8080/api_jsonrpc.php
+            - name: ZBX_ALLOWEDIP
+              value: {{ .Values.mcp.allowedIP | quote }}
+            - name: ZBX_DEBUGLEVEL
+              value: {{ .Values.mcp.debugLevel | quote }}
+          readinessProbe:
+            tcpSocket: {port: mcp}
+            initialDelaySeconds: 5
+            periodSeconds: 10

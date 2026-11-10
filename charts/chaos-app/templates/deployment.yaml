@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chaos-app.fullname" . }}
+  labels:
+    {{- include "chaos-app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "chaos-app.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "chaos-app.labels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ printf "%s|%s|%s|%s|%s|alloy|grpc|true|true|true|500" .Values.otel.exporterEndpoint .Values.otel.serviceName .Values.otel.serviceVersion .Values.otel.tracesSampler .Values.dependencyApiUrl | sha256sum | quote }}
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8000"
+    spec:
+      containers:
+        - name: chaos-app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: {{ include "chaos-app.fullname" . }}-config
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10

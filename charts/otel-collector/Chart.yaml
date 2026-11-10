@@ -1,0 +1,6 @@
+apiVersion: v2
+name: otel-collector
+description: OpenTelemetry Collector gateway for the Zabbix APM lab
+type: application
+version: 0.1.0
+appVersion: "0.162.0"
